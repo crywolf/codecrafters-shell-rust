@@ -12,6 +12,18 @@ fn main() {
         stdin.read_line(&mut input).unwrap();
         let input = input.trim();
 
+        let mut iter = input.split_ascii_whitespace();
+
+        let command = iter.next().unwrap_or_default();
+        if command.is_empty() {
+            continue;
+        }
+        let args = iter.collect::<Vec<_>>();
+
+        if command == "exit" {
+            std::process::exit(args.first().unwrap_or(&"0").parse::<i32>().unwrap());
+        }
+
         println!("{}: command not found", input);
     }
 }
