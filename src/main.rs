@@ -12,16 +12,32 @@ fn main() {
         stdin.read_line(&mut input).unwrap();
         let input = input.trim();
 
-        let mut iter = input.split_ascii_whitespace();
+        let command: &str;
+        let mut args_str = "";
+        let mut args: Option<Vec<&str>> = None;
+        if let Some((cmd, args_s)) = input.split_once(' ') {
+            command = cmd;
+            args_str = args_s;
+            args = Some(args_s.split_ascii_whitespace().collect::<Vec<_>>());
+        } else {
+            command = input;
+        }
 
-        let command = iter.next().unwrap_or_default();
         if command.is_empty() {
             continue;
         }
-        let args = iter.collect::<Vec<_>>();
 
         if command == "exit" {
-            std::process::exit(args.first().unwrap_or(&"0").parse::<i32>().unwrap());
+            let code = if let Some(args) = args {
+                args.first().unwrap_or(&"0").parse::<i32>().unwrap()
+            } else {
+                0
+            };
+            std::process::exit(code);
+        }
+        if command == "echo" {
+            println!("{}", args_str);
+            continue;
         }
 
         println!("{}: command not found", input);
