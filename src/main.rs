@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 #[allow(unused_imports)]
 use std::io::{self, Write};
 
@@ -22,13 +23,21 @@ fn main() {
     }
 }
 
+#[derive(PartialEq, Eq, Hash, Debug)]
 enum Command<'a> {
     Exit(i32),
     Echo(&'a str),
+    Type(&'a str),
     Unknown(&'a str),
 }
 
 impl<'a> Command<'a> {
+    const EXIT: &'static str = "exit";
+    const ECHO: &'static str = "echo";
+    const TYPE: &'static str = "type";
+
+    const BUILTINS: [&'static str; 3] = [Self::EXIT, Self::ECHO, Self::TYPE];
+
     pub fn parse(input: &'a str) -> Self {
         let command: &str;
         let mut args_str = "";
@@ -42,7 +51,7 @@ impl<'a> Command<'a> {
         }
 
         match command {
-            "exit" => {
+            Self::EXIT => {
                 let code = args
                     .unwrap_or(vec!["0"])
                     .first()
@@ -55,7 +64,8 @@ impl<'a> Command<'a> {
                     .unwrap();
                 Command::Exit(code)
             }
-            "echo" => Command::Echo(args_str),
+            Self::ECHO => Command::Echo(args_str),
+            Self::TYPE => Command::Type(args_str),
             _ => Command::Unknown(input),
         }
     }
@@ -64,7 +74,16 @@ impl<'a> Command<'a> {
         match self {
             Command::Exit(code) => std::process::exit(code),
             Command::Echo(arg) => println!("{}", arg),
+            Command::Type(arg) => println!("{}{}", arg, Self::cmd_type(arg)),
             Command::Unknown(cmd) => println!("{}: command not found", cmd),
         }
+    }
+
+    fn cmd_type(arg: &str) -> String {
+        let builtins = HashSet::from(Self::BUILTINS);
+        if builtins.contains(arg) {
+            return String::from(" is a shell builtin");
+        }
+        String::from(": not found")
     }
 }
