@@ -1,6 +1,5 @@
-use std::collections::HashSet;
-#[allow(unused_imports)]
 use std::io::{self, Write};
+use std::{collections::HashSet, path::PathBuf};
 
 fn main() {
     loop {
@@ -23,7 +22,6 @@ fn main() {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
 enum Command<'a> {
     Exit(i32),
     Echo(&'a str),
@@ -80,10 +78,30 @@ impl<'a> Command<'a> {
     }
 
     fn cmd_type(arg: &str) -> String {
+        // is builtin?
         let builtins = HashSet::from(Self::BUILTINS);
         if builtins.contains(arg) {
             return String::from(" is a shell builtin");
         }
+        // is binary (in PATH env var)?
+        if let Some(path) = Self::find_in_path(arg) {
+            return format!(" is {}", path.display());
+        }
         String::from(": not found")
+    }
+
+    fn find_in_path(cmd: &str) -> Option<PathBuf> {
+        let path_env = std::env::var("PATH").unwrap();
+        let paths: Vec<PathBuf> = path_env.split(":").map(PathBuf::from).collect();
+
+        for mut path in paths {
+            path.push(cmd);
+            if let Ok(meta) = std::fs::metadata(&path) {
+                if meta.is_file() {
+                    return Some(path);
+                }
+            }
+        }
+        None
     }
 }
