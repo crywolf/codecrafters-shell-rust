@@ -1,5 +1,5 @@
 use std::io::{self, Write};
-use std::{collections::HashSet, path::PathBuf};
+use std::{collections::HashSet, path::PathBuf, process};
 
 fn main() {
     loop {
@@ -26,7 +26,7 @@ enum Command<'a> {
     Exit(i32),
     Echo(&'a str),
     Type(&'a str),
-    Unknown(&'a str),
+    Unknown(&'a str, Option<Vec<&'a str>>),
 }
 
 impl<'a> Command<'a> {
@@ -64,7 +64,7 @@ impl<'a> Command<'a> {
             }
             Self::ECHO => Command::Echo(args_str),
             Self::TYPE => Command::Type(args_str),
-            _ => Command::Unknown(input),
+            _ => Command::Unknown(command, args),
         }
     }
 
@@ -73,7 +73,20 @@ impl<'a> Command<'a> {
             Command::Exit(code) => std::process::exit(code),
             Command::Echo(arg) => println!("{}", arg),
             Command::Type(arg) => println!("{}{}", arg, Self::cmd_type(arg)),
-            Command::Unknown(cmd) => println!("{}: command not found", cmd),
+            Command::Unknown(cmd, args) => {
+                // try to execute it, if it is executable
+                if Self::find_in_path(cmd).is_some() {
+                    // execute the command
+                    let output = process::Command::new(cmd)
+                        .args(args.unwrap_or_default())
+                        .output()
+                        .unwrap_or_else(|_| panic!("{cmd} command failed to start"));
+
+                    io::stdout().write_all(&output.stdout).unwrap();
+                } else {
+                    println!("{}: command not found", cmd)
+                }
+            }
         }
     }
 
