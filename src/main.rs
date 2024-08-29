@@ -88,13 +88,23 @@ impl<'a> Command<'a> {
                 let path = Path::new(".");
                 println!("{}", path.canonicalize().unwrap().display());
             }
-            Command::Cd(args) => match std::env::set_current_dir(args) {
-                Ok(_) => {}
-                Err(err) if err.kind() == io::ErrorKind::NotFound => {
-                    eprintln!("{}: {}: No such file or directory", Self::CD, args)
+            Command::Cd(args) => {
+                let result = if args == "~" {
+                    let home =
+                        std::env::var("HOME").expect("Could not read HOME environment variable");
+                    std::env::set_current_dir(&home)
+                } else {
+                    std::env::set_current_dir(args)
+                };
+
+                match result {
+                    Ok(_) => {}
+                    Err(err) if err.kind() == io::ErrorKind::NotFound => {
+                        eprintln!("{}: {}: No such file or directory", Self::CD, args)
+                    }
+                    Err(err) => eprintln!("{}: {}: {}", Self::CD, args, err),
                 }
-                Err(err) => eprintln!("{}: {}: {}", Self::CD, args, err),
-            },
+            }
             Command::Unknown(cmd, args) => {
                 // try to execute it, if it is executable
                 if Self::find_in_path(cmd).is_some() {
@@ -125,7 +135,7 @@ impl<'a> Command<'a> {
     }
 
     fn find_in_path(cmd: &str) -> Option<PathBuf> {
-        let path_env = std::env::var("PATH").unwrap();
+        let path_env = std::env::var("PATH").expect("Could not read PATH environment variable");
         let paths: Vec<PathBuf> = path_env.split(":").map(PathBuf::from).collect();
 
         for mut path in paths {
