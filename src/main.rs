@@ -1,5 +1,6 @@
 use std::io::{self, Write};
-use std::{collections::HashSet, path::PathBuf, process};
+use std::path::{Path, PathBuf};
+use std::{collections::HashSet, process};
 
 fn main() {
     loop {
@@ -26,6 +27,7 @@ enum Command<'a> {
     Exit(i32),
     Echo(&'a str),
     Type(&'a str),
+    Pwd(&'a str),
     Unknown(&'a str, Option<Vec<&'a str>>),
 }
 
@@ -33,8 +35,9 @@ impl<'a> Command<'a> {
     const EXIT: &'static str = "exit";
     const ECHO: &'static str = "echo";
     const TYPE: &'static str = "type";
+    const PWD: &'static str = "pwd";
 
-    const BUILTINS: [&'static str; 3] = [Self::EXIT, Self::ECHO, Self::TYPE];
+    const BUILTINS: [&'static str; 4] = [Self::EXIT, Self::ECHO, Self::TYPE, Self::PWD];
 
     pub fn parse(input: &'a str) -> Self {
         let command: &str;
@@ -64,6 +67,7 @@ impl<'a> Command<'a> {
             }
             Self::ECHO => Command::Echo(args_str),
             Self::TYPE => Command::Type(args_str),
+            Self::PWD => Command::Pwd(args_str),
             _ => Command::Unknown(command, args),
         }
     }
@@ -73,6 +77,14 @@ impl<'a> Command<'a> {
             Command::Exit(code) => std::process::exit(code),
             Command::Echo(arg) => println!("{}", arg),
             Command::Type(arg) => println!("{}{}", arg, Self::cmd_type(arg)),
+            Command::Pwd(arg) => {
+                if !arg.is_empty() {
+                    println!("unknown argument: {}", arg);
+                    return;
+                }
+                let path = Path::new(".");
+                println!("{}", path.canonicalize().unwrap().display());
+            }
             Command::Unknown(cmd, args) => {
                 // try to execute it, if it is executable
                 if Self::find_in_path(cmd).is_some() {
