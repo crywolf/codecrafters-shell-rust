@@ -28,6 +28,7 @@ enum Command<'a> {
     Echo(&'a str),
     Type(&'a str),
     Pwd(&'a str),
+    Cd(&'a str),
     Unknown(&'a str, Option<Vec<&'a str>>),
 }
 
@@ -36,8 +37,9 @@ impl<'a> Command<'a> {
     const ECHO: &'static str = "echo";
     const TYPE: &'static str = "type";
     const PWD: &'static str = "pwd";
+    const CD: &'static str = "cd";
 
-    const BUILTINS: [&'static str; 4] = [Self::EXIT, Self::ECHO, Self::TYPE, Self::PWD];
+    const BUILTINS: [&'static str; 5] = [Self::EXIT, Self::ECHO, Self::TYPE, Self::PWD, Self::CD];
 
     pub fn parse(input: &'a str) -> Self {
         let command: &str;
@@ -68,6 +70,7 @@ impl<'a> Command<'a> {
             Self::ECHO => Command::Echo(args_str),
             Self::TYPE => Command::Type(args_str),
             Self::PWD => Command::Pwd(args_str),
+            Self::CD => Command::Cd(args_str),
             _ => Command::Unknown(command, args),
         }
     }
@@ -85,6 +88,13 @@ impl<'a> Command<'a> {
                 let path = Path::new(".");
                 println!("{}", path.canonicalize().unwrap().display());
             }
+            Command::Cd(args) => match std::env::set_current_dir(args) {
+                Ok(_) => {}
+                Err(err) if err.kind() == io::ErrorKind::NotFound => {
+                    eprintln!("{}: {}: No such file or directory", Self::CD, args)
+                }
+                Err(err) => eprintln!("{}: {}: {}", Self::CD, args, err),
+            },
             Command::Unknown(cmd, args) => {
                 // try to execute it, if it is executable
                 if Self::find_in_path(cmd).is_some() {
@@ -93,7 +103,6 @@ impl<'a> Command<'a> {
                         .args(args.unwrap_or_default())
                         .output()
                         .unwrap_or_else(|_| panic!("{cmd} command failed to start"));
-
                     io::stdout().write_all(&output.stdout).unwrap();
                 } else {
                     println!("{}: command not found", cmd)
